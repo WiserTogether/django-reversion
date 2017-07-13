@@ -3,16 +3,16 @@
 Compatible Django versions
 ==========================
 
-django-reversion aims to stay compatible with the latest LTS release of Django, along with any more recent releases. See :ref:`changelog`.
+django-reversion aims to stay compatible with the latest LTS release of Django, along with more recent releases. See :ref:`changelog`.
 
 Older versions of Django require an older version of django-reversion to be installed.
 
 ==============  =================
 Django version  Reversion release
 ==============  =================
-1.8+            1.11.0
-1.7+            1.10.0
-1.6+            1.8.5
+1.8 - current   2.0.0
+1.7             1.10.x
+1.6             1.8.x
 ==============  =================
 
 .. Warning::

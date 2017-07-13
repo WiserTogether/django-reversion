@@ -1,88 +1,14 @@
 from django.contrib import admin
-try:
-    from django.contrib.contenttypes.admin import GenericTabularInline
-except ImportError:  # Django < 1.9  pragma: no cover
-    from django.contrib.contenttypes.generic import GenericTabularInline
-
 from reversion.admin import VersionAdmin
-
-from test_app.models import (
-    ChildTestAdminModel,
-    InlineTestChildModel,
-    InlineTestChildModelProxy,
-    InlineTestParentModel,
-    InlineTestParentModelProxy,
-    InlineTestUnrelatedChildModel,
-    InlineTestUnrelatedParentModel,
-    InlineTestChildGenericModel,
-)
+from test_app.models import TestModel, TestModelRelated
 
 
-class ChildTestAdminModelAdmin(VersionAdmin):
+class TestModelAdmin(VersionAdmin):
 
-    pass
-
-
-admin.site.register(ChildTestAdminModel, ChildTestAdminModelAdmin)
+    filter_horizontal = ("related",)
 
 
-class InlineTestChildModelProxyInline(admin.TabularInline):
-
-    model = InlineTestChildModelProxy
-
-    extra = 0
-
-    verbose_name = "Proxy child"
-
-    verbose_name_plural = "Proxy children"
+admin.site.register(TestModel, TestModelAdmin)
 
 
-class InlineTestChildModelInline(admin.TabularInline):
-
-    model = InlineTestChildModel
-
-    extra = 0
-
-    verbose_name = "Child"
-
-    verbose_name_plural = "Children"
-
-
-class InlineTestChildGenericModelInline(GenericTabularInline):
-
-    model = InlineTestChildGenericModel
-
-    ct_field = "content_type"
-
-    ct_fk_field = "object_id"
-
-    extra = 0
-
-
-class InlineTestParentModelAdmin(VersionAdmin):
-
-    inlines = (InlineTestChildModelInline, InlineTestChildGenericModelInline,)
-
-
-admin.site.register(InlineTestParentModel, InlineTestParentModelAdmin)
-
-
-class InlineTestParentModelProxyAdmin(VersionAdmin):
-
-    inlines = (InlineTestChildModelProxyInline,)
-
-
-admin.site.register(InlineTestParentModelProxy, InlineTestParentModelProxyAdmin)
-
-
-class InlineTestUnrelatedChildModelInline(admin.TabularInline):
-
-    model = InlineTestUnrelatedChildModel
-
-
-class InlineTestUnrelatedParentModelAdmin(VersionAdmin):
-
-    inlines = (InlineTestUnrelatedChildModelInline,)
-
-
-admin.site.register(InlineTestUnrelatedParentModel, InlineTestUnrelatedParentModelAdmin)
+admin.site.register(TestModelRelated, admin.ModelAdmin)

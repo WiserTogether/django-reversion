@@ -1,32 +1,24 @@
 from django.http import HttpResponse
 from django.views.generic.base import View
-from reversion.views import RevisionMixin
-from test_app.models import ReversionTestModel1
+from reversion.views import create_revision, RevisionMixin
+from test_app.models import TestModel
 
 
-class SaveRevisionViewBase(View):
+def save_obj_view(request):
+    return HttpResponse(TestModel.objects.create().id)
+
+
+def save_obj_error_view(request):
+    TestModel.objects.create()
+    raise Exception("Boom!")
+
+
+@create_revision()
+def create_revision_view(request):
+    return save_obj_view(request)
+
+
+class RevisionMixinView(RevisionMixin, View):
 
     def dispatch(self, request):
-        ReversionTestModel1.objects.create(
-            name="model1 instance3 version1",
-        )
-        return HttpResponse("OK")
-
-
-class SaveRevisionView(RevisionMixin, SaveRevisionViewBase):
-
-    pass
-
-
-class ErrorRevisionViewBase(View):
-
-    def dispatch(self, request):
-        ReversionTestModel1.objects.create(
-            name="model1 instance1 version1",
-        )
-        raise Exception("Boom!")
-
-
-class ErrorRevisionView(RevisionMixin, ErrorRevisionViewBase):
-
-    pass
+        return save_obj_view(request)

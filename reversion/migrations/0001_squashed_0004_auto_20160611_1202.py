@@ -9,7 +9,7 @@ import django.db.models.deletion
 
 class Migration(migrations.Migration):
 
-    replaces = [('reversion', '0001_initial'), ('reversion', '0002_auto_20141216_1509'), ('reversion', '0003_auto_20160601_1600')]
+    replaces = [('reversion', '0001_initial'), ('reversion', '0002_auto_20141216_1509'), ('reversion', '0003_auto_20160601_1600'), ('reversion', '0004_auto_20160611_1202')]
 
     initial = True
 
@@ -23,11 +23,13 @@ class Migration(migrations.Migration):
             name='Revision',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('manager_slug', models.CharField(db_index=True, default='default', max_length=191)),
                 ('date_created', models.DateTimeField(db_index=True, help_text='The date and time this revision was created.', verbose_name='date created')),
                 ('comment', models.TextField(blank=True, help_text='A text comment on this revision.', verbose_name='comment')),
                 ('user', models.ForeignKey(blank=True, help_text='The user who created this revision.', null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL, verbose_name='user')),
             ],
+            options={
+                "ordering": ("-pk",)
+            },
         ),
         migrations.CreateModel(
             name='Version',
@@ -41,9 +43,12 @@ class Migration(migrations.Migration):
                 ('revision', models.ForeignKey(help_text='The revision that contains this version.', on_delete=django.db.models.deletion.CASCADE, to='reversion.Revision')),
                 ('db', models.CharField(help_text='The database the model under version control is stored in.', max_length=191)),
             ],
+            options={
+                "ordering": ("-pk",)
+            },
         ),
         migrations.AlterUniqueTogether(
             name='version',
-            unique_together=set([('object_id', 'content_type', 'db', 'revision')]),
+            unique_together=set([('db', 'content_type', 'object_id', 'revision')]),
         ),
     ]

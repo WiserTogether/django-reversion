@@ -28,12 +28,8 @@ You can keep up to date with the latest announcements by joining the
 Upgrading
 ---------
 
-If you're upgrading your existing installation of django-reversion, please check
-the `Schema Migrations <http://django-reversion.readthedocs.org/en/latest/migrations.html>`_
-documentation for information on any database changes and how to upgrade.
-
-It's always worth checking the `CHANGELOG <https://github.com/etianen/django-reversion/blob/master/CHANGELOG.rst>`_
-before upgrading too, just in case you get caught off-guard by a minor upgrade to the library.
+Please check the `Changelog <https://github.com/etianen/django-reversion/blob/master/CHANGELOG.rst>`_ before upgrading
+your installation of django-reversion.
 
 
 Contributing
@@ -44,7 +40,7 @@ Bug reports, bug fixes, and new features are always welcome. Please raise issues
 pull requests for any new code.
 
 You can run the test suite yourself from within a virtual environment with the following
-commands:
+commands. The test suite requires that both MySQL and PostgreSQL be installed.
 
 .. code:: bash
 

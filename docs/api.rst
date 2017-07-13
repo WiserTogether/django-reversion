@@ -25,7 +25,7 @@ Models must be registered with django-reversion before they can be used with the
         pass
 
 .. Hint::
-    If you're using the :ref:`admin`, model registration is automatic. If you’re using django-reversion in a management command, make sure you call ``django.contrib.admin.autodiscover`` to load the admin modules before using the django-reversion API.
+    If you're using the :ref:`admin`, model registration is automatic. If you’re using django-reversion in a management command, make sure you call ``django.contrib.admin.autodiscover()`` to load the admin modules before using the django-reversion API.
 
 .. include:: /_include/post-register.rst
 
@@ -70,12 +70,14 @@ Loading revisions
 
 Each model instance saved in a revision block is serialized as a :ref:`Version`. All versions in a revision block are associated with a single :ref:`Revision`.
 
-You can load a ``Queryset`` of versions from the database. Versions are loaded with the most recent version first.
+You can load a :ref:`VersionQuerySet` of versions from the database. Versions are loaded with the most recent version first.
 
 .. code:: python
 
+    from reversion.models import Version
+
     # Load a queryset of versions for a specific model instance.
-    versions = reversion.get_for_object(instance)
+    versions = Version.objects.get_for_object(instance)
     assert len(versions) == 2
 
     # Check the serialized data for the first version.
@@ -151,79 +153,62 @@ Registration API
 
 .. _register:
 
-reversion.register(model, \*\*options)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.register(model, **options)``
 
-Registers a model with django-reversion.
+    Registers a model with django-reversion.
 
-Throws :ref:`RegistrationError` if the model has already been registered.
+    Throws :ref:`RegistrationError` if the model has already been registered.
 
-``model``
-    The Django model to register.
+    ``model``
+        The Django model to register.
 
-``fields=None``
-    An iterable of field names to include in the serialized data. If ``None``, all fields will be included.
+    ``fields=None``
+        An iterable of field names to include in the serialized data. If ``None``, all fields will be included.
 
-``exclude=()``
-    An iterable of field names to exclude from the serialized data.
+    ``exclude=()``
+        An iterable of field names to exclude from the serialized data.
 
-``follow=()``
-    An iterable of model relationships to follow when saving a version of this model. ``ForeignKey``, ``ManyToManyField`` and reversion ``ForeignKey`` relationships are supported. Any property that returns a ``Model`` or ``QuerySet`` is also supported.
+    ``follow=()``
+        An iterable of model relationships to follow when saving a version of this model. ``ForeignKey``, ``ManyToManyField`` and reversion ``ForeignKey`` relationships are supported. Any property that returns a ``Model`` or ``QuerySet`` is also supported.
 
-``format="json"``
-    The name of a Django serialization format to use when saving the model instance.
+    ``format="json"``
+        The name of a Django serialization format to use when saving the model instance.
 
-``for_concrete_model=True``
-    If ``True`` proxy models will be saved under the same content type as their concrete model. If ``False``, proxy models will be saved under their own content type, effectively giving proxy models their own distinct history.
+    ``for_concrete_model=True``
+        If ``True`` proxy models will be saved under the same content type as their concrete model. If ``False``, proxy models will be saved under their own content type, effectively giving proxy models their own distinct history.
 
-``signals=(post_save,)``
-    A tuple of Django signals that will trigger adding the model instance to an active revision.
+    ``ignore_duplicates=False``
+        If ``True``, then an additional check is performed to avoid saving duplicate versions for this model.
 
-``eager_signals=()``
-    A tuple of Django signals that will trigger adding the model instance to an active revision. Unlike ``signals``, model instances triggering this signal will be serialized immediately, rather than at the end of the revision block. This makes it suitable for usage with signals like ``pre_delete``.
+        Checking for duplicate revisions adds significant overhead to the process of creating a revision. Don't enable it unless you really need it!
 
-``adapter_cls=reversion.VersionAdapter``
-    A subclass of :ref:`VersionAdapter` to use to register the model.
+    .. Hint::
+        By default, django-reversion will not register any parent classes of a model that uses multi-table inheritance. If you wish to also add parent models to your revision, you must explicitly add their ``parent_ptr`` fields to the ``follow`` parameter when you register the model.
 
-.. Hint::
-    By default, django-reversion will not register any parent classes of a model that uses multi-table inheritance. If you wish to also add parent models to your revision, you must explicitly add their ``parent_ptr`` fields to the ``follow`` parameter when you register the model.
-
-.. include:: /_include/post-register.rst
+    .. include:: /_include/post-register.rst
 
 
-reversion.is_registered(model)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.is_registered(model)``
 
-Returns whether the given model has been registered with django-reversion.
+    Returns whether the given model has been registered with django-reversion.
 
-``model``
-    The Django model to check.
-
-
-reversion.unregister(model)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Unregisters the given model from django-reversion.
-
-Throws :ref:`RegistrationError` if the model has not been registered with django-reversion.
-
-``model``
-    The Django model to unregister.
+    ``model``
+        The Django model to check.
 
 
-reversion.get_registered_models()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.unregister(model)``
 
-Returns an iterable of all registered models.
+    Unregisters the given model from django-reversion.
+
+    .. include:: /_include/throws-registration-error.rst
+
+    ``model``
+        The Django model to unregister.
 
 
-reversion.get_adapter(model)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.get_registered_models()``
 
-Returns the :ref:`VersionAdapter` for the given model.
-
-``model``
-    The Django model look up.
+    Returns an iterable of all registered models.
 
 
 .. _revision-api:
@@ -231,176 +216,99 @@ Returns the :ref:`VersionAdapter` for the given model.
 Revision API
 ------------
 
-reversion.create_revision(manage_manually=False, db=None)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.create_revision(manage_manually=False, using=None, atomic=True)``
 
-Marks a block of code as a *revision block*. Can also be used as a decorator. The revision block will be wrapped in a ``transaction.atomic()``.
+    Marks a block of code as a *revision block*. Can also be used as a decorator.
 
-``manage_manually``
-    If ``True``, versions will not be saved when a model's ``save()`` method is called. This allows version control to be switched off for a given revision block.
+    .. include:: /_include/create-revision-args.rst
 
-``db``:
-    The database to save the revision data. The revision block will be wrapped in a transaction using this database. If ``None``, the default database for :ref:`Revision` will be used.
 
+``reversion.is_active()``
 
-reversion.set_ignore_duplicates(ignore_duplicates)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Returns whether there is currently an active revision block.
 
-.. include:: /_include/ignore-duplicates.rst
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+``reversion.is_manage_manually()``
 
-``ignore_duplicates``
-    A ``bool`` indicating whether duplicate revisions should be saved.
+    Returns whether the current revision block is in ``manage_manually`` mode.
 
 
-reversion.get_ignore_duplicates()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.set_user(user)``
 
-Returns whether duplicate revisions will be saved.
+    Sets the user for the current revision.
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    .. include:: /_include/throws-revision-error.rst
 
+    ``user``
+        A ``User`` model instance (or whatever your ``settings.AUTH_USER_MODEL`` is).
 
-Metadata API
-------------
 
-reversion.set_user(user)
-^^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.get_user()``
 
-Sets the user for the current revision.
+    Returns the user for the current revision.
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    .. include:: /_include/throws-revision-error.rst
 
-``user``
-    A ``User`` model instance (or whatever your ``settings.AUTH_USER_MODEL`` is).
 
+.. _set_comment:
 
-reversion.get_user()
-^^^^^^^^^^^^^^^^^^^^
+``reversion.set_comment(comment)``
 
-Returns the user for the current revision.
+    Sets the comment for the current revision.
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    .. include:: /_include/throws-revision-error.rst
 
+    ``comment``
+        The text comment for the revision.
 
-reversion.set_comment(comment)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Sets the comment for the current revision.
+``reversion.get_comment()``
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    Returns the comment for the current revision.
 
-``comment``
-    The text comment for the revision.
+    .. include:: /_include/throws-revision-error.rst
 
 
-reversion.get_comment()
-^^^^^^^^^^^^^^^^^^^^^^^
+``reversion.set_date_created(date_created)``
 
-Returns the comment for the current revision.
+    Sets the creation date for the current revision.
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    .. include:: /_include/throws-revision-error.rst
 
+    ``date_created``
+        The creation date for the revision.
 
-reversion.add_meta(model_cls, \*\*values)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Adds custom metadata to a revision.
+``reversion.get_date_created()``
 
-Throws :ref:`RevisionManagementError` if there is no active revision block.
+    Returns the creation date for the current revision.
 
-``model_cls``
-    A Django model to store the custom metadata. The model must have a ``ForeignKey`` or ``OneToOneField`` to :ref:`Revision`.
+    .. include:: /_include/throws-revision-error.rst
 
-``**values``
-    Values to be stored on ``model_cls`` when it is saved.
 
+``reversion.add_meta(model, **values)``
 
-.. _raw-revision-api:
+    Adds custom metadata to a revision.
 
-Raw revision API
-----------------
+    .. include:: /_include/throws-revision-error.rst
 
-reversion.save_revision(objects=(), ignore_duplicates=False, user=None, comment="", meta=(), date_created=None, db=None)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ``model``
+        A Django model to store the custom metadata. The model must have a ``ForeignKey`` or ``OneToOneField`` to :ref:`Revision`.
 
-Manually saves a revision without having to create a revision block and call `save()` on registered model instances.
-Returns the :ref:`Revision` that was created, or ``None`` if no revision was saved.
+    ``**values``
+        Values to be stored on ``model`` when it is saved.
 
-``objects``
-    An iterable of model instances to save in the revision.
 
-``ignore_duplicates``
-    .. include:: /_include/ignore-duplicates.rst
+``reversion.add_to_revision(obj, model_db=None)``
 
-``user``
-    A ``User`` model to add to the revision metadata.
+    Adds a model instance to a revision.
 
-``comment``
-    A text comment to add to the revision metadata.
+    .. include:: /_include/throws-revision-error.rst
 
-``meta``
-    An iterable of unsaved model instances representing additional meta information about the revision. Each model must have a ``ForeignKey`` or ``OneToOneField`` to ``reversion.models.Revision``. When the revision is saved, all meta model instances will be saved in the same transaction.
+    ``obj``
+        A model instance to add to the revision.
 
-``date_created``
-    The date to associate with the revision. Defaults to ``django.utils.timezone.now()``.
-
-``db``
-    The database to save the revision into.
-
-
-.. _lookup-api:
-
-Lookup API
-----------
-
-reversion.get_for_object(obj, db=None)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Returns a :ref:`VersionQuerySet` for the given model instance. The results are ordered with the most recent :ref:`Version` first.
-
-Throws :ref:`RegistrationError` if the model has not been registered with django-reversion.
-
-``obj``
-    An instance of a registered model.
-
-``db``
-    The database to load the versions from.
-
-
-reversion.get_for_object_reference(model, pk, db=None)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Returns a :ref:`VersionQuerySet` for the given model instance. The results are ordered with the most recent :ref:`Version` first.
-
-Throws :ref:`RegistrationError` if the model has not been registered with django-reversion.
-
-``model``
-    A registered model.
-
-``pk``
-    The database primary key of a model instance.
-
-``db``
-    The database to load the versions from.
-
-
-reversion.get_deleted(model, db=None, model_db=None)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Returns a :ref:`VersionQuerySet` for the given model containing versions where the serialized model no longer exists in the database. The results are ordered with the most recent :ref:`Version` first.
-
-Throws :ref:`RegistrationError` if the model has not been registered with django-reversion.
-
-``model``
-    A registered model.
-
-``db``
-    The database to load the versions from.
-
-``model_db``
-    The database to check against for live model instances. Defaults to `db`.
+    .. include:: /_include/model-db-arg.rst
 
 
 .. _VersionQuerySet:
@@ -408,13 +316,66 @@ Throws :ref:`RegistrationError` if the model has not been registered with django
 reversion.models.VersionQuerySet
 --------------------------------
 
-A ``QuerySet`` of :ref:`Version`.
+A ``QuerySet`` of :ref:`Version`. The results are ordered with the most recent :ref:`Version` first.
 
 
-VersionQuerySet.get_unique()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``Version.objects.get_for_model(model, model_db=None)``
 
-Returns an iterable of :ref:`Version`, where each version is unique for a given database, model instance, and set of serialized fields.
+    Returns a :ref:`VersionQuerySet` for the given model.
+
+    .. include:: /_include/throws-registration-error.rst
+
+    ``model``
+        A registered model.
+
+    .. include:: /_include/model-db-arg.rst
+
+
+``Version.objects.get_for_object(obj, model_db=None)``
+
+    Returns a :ref:`VersionQuerySet` for the given model instance.
+
+    .. include:: /_include/throws-registration-error.rst
+
+    ``obj``
+        An instance of a registered model.
+
+    .. include:: /_include/model-db-arg.rst
+
+
+``Version.objects.get_for_object_reference(model, pk, model_db=None)``
+
+    Returns a :ref:`VersionQuerySet` for the given model and primary key.
+
+    .. include:: /_include/throws-registration-error.rst
+
+    ``model``
+        A registered model.
+
+    ``pk``
+        The database primary key of a model instance.
+
+    .. include:: /_include/model-db-arg.rst
+
+
+``Version.objects.get_deleted(model, model_db=None)``
+
+    Returns a :ref:`VersionQuerySet` for the given model containing versions where the serialized model no longer exists in the database.
+
+    .. include:: /_include/throws-registration-error.rst
+
+    ``model``
+        A registered model.
+
+    ``db``
+        The database to load the versions from.
+
+    .. include:: /_include/model-db-arg.rst
+
+
+``Version.objects.get_unique()``
+
+    Returns an iterable of :ref:`Version`, where each version is unique for a given database, model instance, and set of serialized fields.
 
 
 .. _Version:
@@ -425,68 +386,58 @@ reversion.models.Version
 Represents a single model instance serialized in a revision.
 
 
-Version.pk
-^^^^^^^^^^
+``Version.id``
 
-The database primary key of the :ref:`Version`.
-
-
-Version.revision
-^^^^^^^^^^^^^^^^
-
-A ``ForeignKey`` to a :ref:`Revision` instance.
+    The database primary key of the :ref:`Version`.
 
 
-Version.content_type
-^^^^^^^^^^^^^^^^^^^^
+``Version.revision``
 
-The ``ContentType`` of the serialized model instance.
-
-
-Version.object_id
-^^^^^^^^^^^^^^^^^
-
-The string representation of the serialized model instance's primary key.
+    A ``ForeignKey`` to a :ref:`Revision` instance.
 
 
-Version.db
-^^^^^^^^^^
+``Version.content_type``
 
-The Django database alias where the serialized model was saved.
-
-
-Version.format
-^^^^^^^^^^^^^^
-
-The name of the Django serialization format used to serialize the model instance.
+    The ``ContentType`` of the serialized model instance.
 
 
-Version.serialized_data
-^^^^^^^^^^^^^^^^^^^^^^^
+``Version.object_id``
 
-The raw serialized data of the model instance.
-
-
-Version.object_repr
-^^^^^^^^^^^^^^^^^^^
-
-The stored snapshot of the model instance's ``__str__`` method when the instance was serialized.
+    The string representation of the serialized model instance's primary key.
 
 
-Version.field_dict
-^^^^^^^^^^^^^^^^^^
+``Version.db``
 
-A dictionary of stored model fields. This includes fields from any parent models in the same revision.
-
-Throws :ref:`RevertError` if the model could not be loaded, e.g. the serialized data is not compatible with the current database schema, due to database migrations.
+    The Django database alias where the serialized model was saved.
 
 
-Version.revert()
-^^^^^^^^^^^^^^^^
+``Version.format``
 
-Restores the serialized model instance to the database. To restore the entire revision, use :ref:`Revision-revert`.
+    The name of the Django serialization format used to serialize the model instance.
 
-Throws :ref:`RevertError` if the model could not be reverted, e.g. the serialized data is not compatible with the current database schema, due to database migrations.
+
+``Version.serialized_data``
+
+    The raw serialized data of the model instance.
+
+
+``Version.object_repr``
+
+    The stored snapshot of the model instance's ``__str__`` method when the instance was serialized.
+
+
+``Version.field_dict``
+
+    A dictionary of stored model fields. This includes fields from any parent models in the same revision.
+
+    .. include:: /_include/throws-revert-error.rst
+
+
+``Version.revert()``
+
+    Restores the serialized model instance to the database. To restore the entire revision, use :ref:`Revision.revert() <Revision-revert>`.
+
+    .. include:: /_include/throws-revert-error.rst
 
 
 .. _Revision:
@@ -496,146 +447,33 @@ reversion.models.Revision
 
 Contains metadata about a revision, and groups together all :ref:`Version` instances created in that revision.
 
+``Revision.id``
 
-Revision.pk
-^^^^^^^^^^^
-
-The database primary key of the :ref:`Revision`.
+    The database primary key of the :ref:`Revision`.
 
 
-Revision.revision_manager
-^^^^^^^^^^^^^^^^^^^^^^^^^
+``Revision.date_created``
 
-The :ref:`RevisionManager` used to save the revision.
-
-
-Revision.date_created
-^^^^^^^^^^^^^^^^^^^^^
-
-A ``datetime`` when the revision was created.
+    A ``datetime`` when the revision was created.
 
 
-Revision.user
-^^^^^^^^^^^^^
+``Revision.user``
 
-The ``User`` that created the revision, or None.
+    The ``User`` that created the revision, or None.
 
 
-Revision.comment
-^^^^^^^^^^^^^^^^
+``Revision.comment``
 
-A text comment on the revision.
+    A text comment on the revision.
 
 
 .. _Revision-revert:
 
-Revision.revert(delete=False)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+``Revision.revert(delete=False)``
 
-Restores all contained serialized model instances to the database.
+    Restores all contained serialized model instances to the database.
 
-Throws :ref:`RevertError` if the model could not be reverted, e.g. the serialized data is not compatible with the current database schema, due to database migrations.
+    .. include:: /_include/throws-revert-error.rst
 
-``delete``
-    If ``True``, any model instances which have been created and are reachable by the ``follow`` clause of any model instances in this revision will be deleted. This effectively restores a group of related models to the state they were in when the revision was created.
-
-
-.. _RevisionManager:
-
-reversion.RevisionManager
--------------------------
-
-To support multiple configurations of django-reversion in the same project, create a standalone :ref:`RevisionManager` to act as a completely separate source of registration.
-
-.. code:: python
-
-    from django.db import models
-    import reversion
-
-    # Create a custom revision manager.
-    my_revision_manager = RevisionManager("custom")
-
-    # Register with the default revision manager.
-    @reversion.register()
-    # Register with a custom revision manager.
-    @my_revision_manager.register()
-    class MyModel(models.Model):
-
-        pass
-
-A separate :ref:`Revision` will be saved for every :ref:`RevisionManager` that a given model is registered with.
-
-Use your custom :ref:`RevisionManager` as a namespace to access the :ref:`registration-api`, :ref:`raw-revision-api` and :ref:`lookup-api`.
-
-.. code:: python
-
-    versions = my_revision_manager.get_for_object(my_instance)
-
-
-RevisionManager.__init__(self, manager_slug)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Creates a new :ref:`RevisionManager`.
-
-``manager_slug``
-    A unique text name for the manager. If the name has already been used in your project, a :ref:`RegistrationError` will be raised.
-
-
-.. _VersionAdapter:
-
-reversion.VersionAdapter
-------------------------
-
-Customize almost every aspect of model registration by supplying a subclass of :ref:`VersionAdapter` to :ref:`register`.
-
-
-VersionAdapter.fields = None
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-An iterable of field names to include in the serialized data. If ``None``, all fields will be included.
-
-
-VersionAdapter.exclude = ()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-An iterable of field names to exclude from the serialized data.
-
-
-VersionAdapter.follow = ()
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-An iterable of model relationships to follow when saving a version of this model. ``ForeignKey``, ``ManyToManyField`` and reversion ``ForeignKey`` relationships are supported. Any property that returns a ``Model`` or ``QuerySet`` is also supported.
-
-
-VersionAdapter.format = "json"
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-The name of a Django serialization format to use when saving the model instance.
-
-
-VersionAdapter.for_concrete_model = True
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-If ``True`` proxy models will be saved under the same content type as their concrete model. If ``False``, proxy models will be saved under their own content type, effectively giving proxy models their own distinct history.
-
-
-VersionAdapter.signals = (post_save,)
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A tuple of Django signals that will trigger adding the model instance to an active revision.
-
-
-VersionAdapter.eager_signals = ()
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-A tuple of Django signals that will trigger adding the model instance to an active revision. Unlike ``signals``, model instances triggering this signal will be serialized immediately, rather than at the end of the revision block. This makes it suitable for usage with signals like ``pre_delete``.
-
-
-VersionAdapter.revert(self, version):
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Saves the :ref:`Version` to the database.
-
-``version``
-
-    The :ref:`Version` to save to the database.
+    ``delete``
+        If ``True``, any model instances which have been created and are reachable by the ``follow`` clause of any model instances in this revision will be deleted. This effectively restores a group of related models to the state they were in when the revision was created.
