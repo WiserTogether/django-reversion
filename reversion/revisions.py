@@ -217,7 +217,8 @@ def _save_revision(versions, user=None, comment="", meta=(), date_created=None, 
     # Only save versions that exist in the database.
     model_db_pks = defaultdict(lambda: defaultdict(set))
     for version in versions:
-        model_db_pks[version._model][version.db].add(version.object_id)
+        if 'None' not in version.object_id:
+            model_db_pks[version._model][version.db].add(version.object_id)
     model_db_existing_pks = {
         model: {
             db: frozenset(map(
